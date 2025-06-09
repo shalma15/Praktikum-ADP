@@ -18,7 +18,7 @@ def tampilkan_logo_sr():
 
 def animasi_loading():
     for i in range(3):
-        print(colored("Memuat Aplikasi" + "." * (i+1), 'black'))
+        print(colored("Loading" + "." * (i+1), 'black'))
         time.sleep(2)
         clear_screen()
         tampilkan_logo_sr()
