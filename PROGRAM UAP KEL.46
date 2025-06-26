@@ -1,0 +1,212 @@
+import os
+import time
+import threading
+from termcolor import colored, cprint
+import pyfiglet
+
+# Fungsi ambil input dipisah dari countdown
+def ambil_input(prompt, result, event):
+    result[0] = input(prompt)
+    event.set()
+
+logo = """
+╔════════════════════╗
+║                    ║
+║    ShaCa QUIZZ     ║
+║                    ║
+╚════════════════════╝"""
+
+def tampilkan_logo():
+    cprint(f"{logo}", "cyan", "on_grey")
+
+def clear_screen():
+    if os.system("cls") != 0:
+        os.system("clear")
+
+def loading():
+    for i in range(3):
+        print(colored("   Loading" + "." * (i+1), 'black'))
+        time.sleep(0.5)
+        os.system('cls')
+        tampilkan_logo()
+    print(colored("\n      ..START..    \n", 'cyan'))
+    time.sleep(0.7)
+
+def tunggu_jawaban_dengan_countdown(prompt, waktu_maks=15, pertanyaan=None, pilihan=None, nama=""):
+    result = [None]
+    jawaban_diterima = threading.Event()
+
+    thread_input = threading.Thread(target=ambil_input, args=(prompt, result, jawaban_diterima))
+    thread_input.daemon = True
+    thread_input.start()
+
+    for sisa in range(waktu_maks, -1, -1):
+        if jawaban_diterima.is_set():
+            durasi = waktu_maks - sisa
+            return result[0], durasi
+        clear_screen()
+        tampilkan_logo()
+        print(f"Player : {nama}\n")
+        if pertanyaan and pilihan:
+            cprint(pertanyaan, 'magenta')
+            for opsi in pilihan:
+                cprint(opsi, 'magenta')
+        print("\nWaktu tersisa:")
+        print(colored(pyfiglet.figlet_format(str(sisa)), 'red'))
+        time.sleep(1)
+
+    return None, waktu_maks + 1  # Waktu benar-benar habis
+
+def load_soal(nama_file, kategori):
+    f = open(nama_file, "r")
+    baris = f.readlines()
+    f.close()
+
+    soal = []
+    i = 0
+    while i < len(baris):
+        if baris[i].strip() == "[" + kategori + "]":
+            pertanyaan = baris[i+1]
+            a = baris[i+2]
+            b = baris[i+3]
+            c = baris[i+4]
+            d = baris[i+5]
+            jawaban = baris[i+6]
+            soal.append([pertanyaan, [a, b, c, d], jawaban.strip()[-1].lower()])
+            i += 7
+        else:
+            i += 1
+    return soal
+
+def tampilkan_soal(soal_list, nama):
+    total = 0
+    nomor = 0
+    while nomor < len(soal_list):
+        clear_screen()
+        tampilkan_logo()
+        print("Player :", nama)
+        print()
+
+        data = soal_list[nomor]
+        pertanyaan = data[0]
+        pilihan = data[1]
+        jawaban_benar = data[2]
+
+        jawab, durasi = tunggu_jawaban_dengan_countdown(
+            "Jawabanmu (a/b/c/d): ", 
+            15,
+            pertanyaan=pertanyaan,
+            pilihan=pilihan,
+            nama=nama
+        )
+
+        time.sleep(0.5)
+        clear_screen()
+        print("Memeriksa jawaban.")
+        time.sleep(0.5)
+        clear_screen()
+        print("Memeriksa jawaban..")
+        time.sleep(0.5)
+        clear_screen()
+        print("Memeriksa jawaban...")
+
+        if jawab is None or jawab.strip() == "":
+            print("⏰ Terlambat! Skor 0")
+        elif jawab.lower() == jawaban_benar:
+            skor = max(20, 200 - durasi * 20)  # skor minimal 20
+            print("✅ Benar! Skor:", skor)
+            total += skor
+        else:
+            print("❌ Salah!")
+
+        input("Tekan ENTER untuk lanjut...")
+        nomor += 1
+        time.sleep(0.5)
+        os.system('cls')
+    return total
+
+def simpan_skor(daftar_skor, nama, nilai):
+    daftar_skor.append([nama, nilai])
+
+def tampilkan_semua_skor(daftar_skor):
+    clear_screen()
+    tampilkan_logo()
+    print("=== 📋 Daftar Skor ===\n")
+
+    daftar_skor.sort(key=lambda x: x[1], reverse=True)
+
+    cprint("╔═══════════════════════════╦═══════╗","black","on_yellow")
+    cprint("║ NAMA                      ║ SKOR  ║","black","on_yellow")
+    cprint("╠═══════════════════════════╬═══════╣","black","on_yellow")
+
+    for data in daftar_skor:
+        nama = data[0]
+        skor = data[1]
+        cprint(f"║ {nama:<26}║{skor:^7}║",'black', 'on_yellow')
+
+    cprint("╚═══════════════════════════╩═══════╝","black","on_yellow")
+    print(f"\n🏆 Skor Tertinggi: {daftar_skor[0][0]} - {daftar_skor[0][1]}")
+
+def pilih_kategori():
+    time.sleep(1)
+    os.system('cls')
+    print("Pilih kategori kuis:\n")
+    print("1. MATEMATIKA SERU")
+    print("2. INDONESIA KITA")
+    print("3. ALAM")
+    print("4. FUN FACT DUNIA")
+    print("5. TEBAKAN LUCU\n")
+
+    while True:
+        pilihan = input("Pilihan : ")
+        if pilihan == "1":
+            return "MATEMATIKA SERU"
+        if pilihan == "2":
+            return "INDONESIA KITA"
+        if pilihan == "3":
+            return "ALAM"
+        if pilihan == "4":
+            return "FUN FACT DUNIA"
+        if pilihan == "5":
+            return "TEBAKAN LUCU"
+        else: 
+            print("PILIHAN TIDAK VALID")
+
+def main():
+    daftar_skor = []
+    file_soal = "soal.txt"
+    kategori = ""
+
+    while True:
+        clear_screen()
+        tampilkan_logo()
+        loading()
+        time.sleep(1)
+        os.system('cls')
+        nama = input("PLAYER : ")
+
+        if len(daftar_skor) == 0:
+            kategori = pilih_kategori()
+        else:
+            print("PILIHAN SEBELUMNYA :", kategori)
+
+        soal = load_soal(file_soal, kategori)
+        if not soal:
+            print("\n⚠️ Tidak ada soal ditemukan untuk kategori tersebut.")
+            input("Tekan ENTER untuk keluar.")
+            break
+
+        soal5 = soal[:5]
+        nilai = tampilkan_soal(soal5, nama)
+        simpan_skor(daftar_skor, nama, nilai)
+
+        lanjut = input("\nKetik 'lanjut' untuk tambah player, 'selesai' untuk tampilkan skor: ")
+        if lanjut == "selesai":
+            tampilkan_semua_skor(daftar_skor)
+            ulang = input("\nKetik 'lanjut' untuk mulai ulang, ENTER untuk keluar: ")
+            if ulang != "lanjut":
+                print("\n===== TERIMA KASIH! 👋 =====\n")
+                break
+            daftar_skor = []
+
+main()
